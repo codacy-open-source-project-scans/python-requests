@@ -1808,6 +1808,23 @@ class TestRequests:
 
         assert p.headers["Content-Length"] == length
 
+    def test_content_length_for_bytes_data(self, httpbin):
+        data = "This is a string containing multi-byte UTF-8 ☃️"
+        encoded_data = data.encode("utf-8")
+        length = str(len(encoded_data))
+        req = requests.Request("POST", httpbin("post"), data=encoded_data)
+        p = req.prepare()
+
+        assert p.headers["Content-Length"] == length
+
+    def test_content_length_for_string_data_counts_bytes(self, httpbin):
+        data = "This is a string containing multi-byte UTF-8 ☃️"
+        length = str(len(data.encode("utf-8")))
+        req = requests.Request("POST", httpbin("post"), data=data)
+        p = req.prepare()
+
+        assert p.headers["Content-Length"] == length
+
     def test_nonhttp_schemes_dont_check_URLs(self):
         test_urls = (
             "data:image/gif;base64,R0lGODlhAQABAHAAACH5BAUAAAAALAAAAAABAAEAAAICRAEAOw==",
@@ -2810,3 +2827,13 @@ class TestPreparingURLs:
         assert r4 == 425
         assert r5 == 425
         assert r6 == 425
+
+
+def test_json_decode_errors_are_serializable_deserializable():
+    json_decode_error = requests.exceptions.JSONDecodeError(
+        "Extra data",
+        '{"responseCode":["706"],"data":null}{"responseCode":["706"],"data":null}',
+        36,
+    )
+    deserialized_error = pickle.loads(pickle.dumps(json_decode_error))
+    assert repr(json_decode_error) == repr(deserialized_error)
